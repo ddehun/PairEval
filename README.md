@@ -18,7 +18,7 @@ scipy
 tqdm
 ```
 
-2. Download our LoRA checkpoints and datasets from [here]() and locate them on the main directory.
+2. Download our LoRA checkpoints and datasets from [here](https://drive.google.com/drive/folders/1EDN2XDVP5m8-0qKFdPJzaX-UsudqTtFn?usp=sharing) and locate them on the main directory.
 
 3. Obtain your access to [meta-llama/Llama-2-7b-chat-hf](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf).
 
