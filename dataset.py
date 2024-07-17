@@ -38,9 +38,7 @@ class SimpleEvaluationDataset(Dataset):
 
     def _check_example_size(self):
 
-        assert self.actual_example_length * 2 * len(self.few_example_score) == len(
-            self.examples
-        ), (
+        assert self.actual_example_length * 2 * len(self.few_example_score) == len(self.examples), (
             self.actual_example_length,
             len(self.few_example_score),
             len(self.examples),
@@ -74,9 +72,7 @@ class SimpleEvaluationDataset(Dataset):
         level_key = "turn_level"
         template = PROMPT_DICT[level_key][self.prompt_strategy]
         assert few_example_list is not None
-        examples = _make_example_with_pairwise_prompt(
-            example_list, few_example_list, template, self.tokenizer
-        )
+        examples = _make_example_with_pairwise_prompt(example_list, few_example_list, template, self.tokenizer)
         return examples
 
 
@@ -91,10 +87,7 @@ def _make_example_with_pairwise_prompt(
     for example in example_list:
         id_, score = example["id_"], float(example["score"])
         texts = {k: example[k] for k in keys_in_interest if k in example}
-        texts = {
-            k: "\n".join(v) if k in ["history", "dialogue"] else v
-            for k, v in texts.items()
-        }
+        texts = {k: "\n".join(v) if k in ["history", "dialogue"] else v for k, v in texts.items()}
         texts["knowledge"] = (
             "\n".join(["Background Knowledge:"] + example["knowledge"]) + "\n\n"
             if "knowledge" in example and example["knowledge"] is not None
@@ -102,13 +95,8 @@ def _make_example_with_pairwise_prompt(
         )
 
         for few_example in few_example_list:
-            few_texts = {
-                k: few_example[k] for k in keys_in_interest if k in few_example
-            }
-            few_texts = {
-                k: "\n".join(v) if k in ["history", "dialogue"] else v
-                for k, v in few_texts.items()
-            }
+            few_texts = {k: few_example[k] for k in keys_in_interest if k in few_example}
+            few_texts = {k: "\n".join(v) if k in ["history", "dialogue"] else v for k, v in few_texts.items()}
             few_texts["knowledge"] = (
                 "\n".join(["Background Knowledge:"] + few_example["knowledge"]) + "\n\n"
                 if "knowledge" in few_example and few_example["knowledge"] is not None
@@ -121,14 +109,10 @@ def _make_example_with_pairwise_prompt(
             }
             if res["knowledge_1"] != "":
                 assert "Background Knowledge:\n" in res["knowledge_1"]
-                res["knowledge_1"] = res["knowledge_1"].replace(
-                    "Background Knowledge:", "Background Knowledge A:"
-                )
+                res["knowledge_1"] = res["knowledge_1"].replace("Background Knowledge:", "Background Knowledge A:")
             if res["knowledge_2"] != "":
                 assert "Background Knowledge:\n" in res["knowledge_2"]
-                res["knowledge_2"] = res["knowledge_2"].replace(
-                    "Background Knowledge:", "Background Knowledge B:"
-                )
+                res["knowledge_2"] = res["knowledge_2"].replace("Background Knowledge:", "Background Knowledge B:")
 
             text_1 = template.format(**res)
             # real example last
@@ -138,18 +122,12 @@ def _make_example_with_pairwise_prompt(
             }
             if res2["knowledge_1"] != "":
                 assert "Background Knowledge:\n" in res2["knowledge_1"]
-                res2["knowledge_1"] = res2["knowledge_1"].replace(
-                    "Background Knowledge:", "Background Knowledge A:"
-                )
+                res2["knowledge_1"] = res2["knowledge_1"].replace("Background Knowledge:", "Background Knowledge A:")
             if res2["knowledge_2"] != "":
                 assert "Background Knowledge:\n" in res2["knowledge_2"]
-                res2["knowledge_2"] = res2["knowledge_2"].replace(
-                    "Background Knowledge:", "Background Knowledge B:"
-                )
+                res2["knowledge_2"] = res2["knowledge_2"].replace("Background Knowledge:", "Background Knowledge B:")
             text_2 = template.format(**res2)
-            input_ids_both = [
-                tokenizer(text_)["input_ids"] for text_ in [text_1, text_2]
-            ]
+            input_ids_both = [tokenizer(text_)["input_ids"] for text_ in [text_1, text_2]]
             few_id_, few_score = few_example["id_"], float(few_example["score"])
 
             output.append(

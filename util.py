@@ -35,12 +35,8 @@ def get_pearson_correlation(a: List[float], b: List[float]) -> Dict[str, float]:
     return {"correlation": round(100 * res[0], 2), "pvalue": res[1]}
 
 
-def send_dict_tensors_to_device(
-    data: Dict[str, torch.Tensor], device: torch.device
-) -> Dict[str, torch.Tensor]:
-    return {
-        k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in data.items()
-    }
+def send_dict_tensors_to_device(data: Dict[str, torch.Tensor], device: torch.device) -> Dict[str, torch.Tensor]:
+    return {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in data.items()}
 
 
 def set_seed(random_seed: int = 42) -> None:

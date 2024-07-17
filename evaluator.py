@@ -28,13 +28,9 @@ class Evaluator:
         self.temperature = temperature
         target_token = TARGET_TOKENS["pairwise"]
         targt_token_ids = self.tokenizer(target_token, return_tensors="pt")["input_ids"]
-        assert all(
-            [len(e) == 2 for e in targt_token_ids]
-        ), targt_token_ids  # bos for llama / eos for T5
+        assert all([len(e) == 2 for e in targt_token_ids]), targt_token_ids  # bos for llama / eos for T5
 
-        if isinstance(self.model, LlamaForCausalLM) or isinstance(
-            self.model.base_model.model, LlamaForCausalLM
-        ):
+        if isinstance(self.model, LlamaForCausalLM) or isinstance(self.model.base_model.model, LlamaForCausalLM):
             self.target_token_ids = targt_token_ids[:, 1]
         else:
             raise NotImplementedError
@@ -47,45 +43,28 @@ class Evaluator:
             raise ValueError()
 
     @torch.inference_mode()
-    def evaluate(
-        self, dataset: SimpleEvaluationDataset
-    ) -> Tuple[List[Dict[str, float]], Any]:
-        loader = self._build_data_loader(
-            dataset, self.batch_size, self.tokenizer.pad_token_id, self.is_left_padding
-        )
+    def evaluate(self, dataset: SimpleEvaluationDataset) -> Tuple[List[Dict[str, float]], Any]:
+        loader = self._build_data_loader(dataset, self.batch_size, self.tokenizer.pad_token_id, self.is_left_padding)
 
         output_list, misc_info = [], {"all_target_probs": [], "example_ids": []}
         for batch_idx, batch in enumerate(tqdm(loader)):
             id_, answer_score = batch["id_"], batch["score"]
-            input_ids, attention_mask = [
-                batch[k].to("cuda") for k in ["input_ids", "attention_mask"]
-            ]
+            input_ids, attention_mask = [batch[k].to("cuda") for k in ["input_ids", "attention_mask"]]
             bs, seq_len = input_ids.shape
 
             try:
-                logits = self.model(
-                    input_ids=input_ids, attention_mask=attention_mask
-                ).logits[:, seq_len - 1]
+                logits = self.model(input_ids=input_ids, attention_mask=attention_mask).logits[:, seq_len - 1]
                 probs = F.softmax(logits / self.temperature, -1).cpu()
-                prediction_score, all_target_probs = self._elicit_model_prediction(
-                    probs
-                )
+                prediction_score, all_target_probs = self._elicit_model_prediction(probs)
             except RuntimeError as err:
                 print("[E] ", err)
                 prediction_score = [-1.0] * bs
-                all_target_probs = [
-                    [1 / len(self.target_token_ids)] * len(self.target_token_ids)
-                ] * bs
+                all_target_probs = [[1 / len(self.target_token_ids)] * len(self.target_token_ids)] * bs
                 gc.collect()
                 torch.cuda.empty_cache()
 
             assert len(prediction_score) == len(all_target_probs) == bs
-            output_list.extend(
-                [
-                    {"score": s, "pred": p}
-                    for s, p in zip(answer_score, prediction_score)
-                ]
-            )
+            output_list.extend([{"score": s, "pred": p} for s, p in zip(answer_score, prediction_score)])
             misc_info["all_target_probs"].extend(all_target_probs)
             misc_info["example_ids"].extend(id_)
 
@@ -140,9 +119,7 @@ class Evaluator:
             if few_shot_index == 0 and loc == 0:
                 new_answers.append(prev_answers[idx])
             tgt_received_score = all_target_probs[idx][loc]
-            target_example_score[example_index][few_shot_index][
-                loc
-            ] = tgt_received_score
+            target_example_score[example_index][few_shot_index][loc] = tgt_received_score
             target_example_id[example_index][few_shot_index][loc] = [
                 first_id,
                 second_id,
@@ -156,17 +133,11 @@ class Evaluator:
         for ex_index, ex_result in enumerate(target_example_score):
             for few_index in range(len(few_example_score)):
                 assert len(ex_result[few_index]) == 2
-                target_example_score[ex_index][few_index] = (
-                    sum(ex_result[few_index]) / 2
-                )
+                target_example_score[ex_index][few_index] = sum(ex_result[few_index]) / 2
 
-        target_example_score, few_example_score = np.array(
-            target_example_score
-        ), np.array(few_example_score)
+        target_example_score, few_example_score = np.array(target_example_score), np.array(few_example_score)
         prediction = (target_example_score * few_example_score).mean(1).tolist()
-        target_example_score = (
-            target_example_score.tolist()
-        )  # few-shot example들에 대한 평균 예측 값
+        target_example_score = target_example_score.tolist()  # few-shot example들에 대한 평균 예측 값
         """
         3. Prepare the output
         """
@@ -177,9 +148,7 @@ class Evaluator:
 
     def _elicit_model_prediction(self, probs) -> Tuple[List[float], List[float]]:
         assert probs.dim() == 2
-        target_probs = torch.gather(
-            probs, 1, self.target_token_ids.repeat(probs.size(0), 1)
-        )
+        target_probs = torch.gather(probs, 1, self.target_token_ids.repeat(probs.size(0), 1))
 
         assert target_probs.size(1) == 2
         bs = target_probs.size(0)
@@ -193,9 +162,7 @@ class Evaluator:
         is_left_pad: bool,
     ) -> DataLoader:
         def collate_fn(batch, pad_id: int):
-            input_ids, answer_score, id_ = [
-                [e[k] for e in batch] for k in ["input_ids", "score", "id_"]
-            ]
+            input_ids, answer_score, id_ = [[e[k] for e in batch] for k in ["input_ids", "score", "id_"]]
 
             if is_left_pad:
                 input_ids = [s[::-1] for s in input_ids]
@@ -226,9 +193,7 @@ def get_base_model_and_tokenizer(path: str) -> Tuple[LlamaForCausalLM, AutoToken
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16,
     )
-    model = LlamaForCausalLM.from_pretrained(
-        path, quantization_config=config_for_4bit, device_map="auto"
-    ).eval()
+    model = LlamaForCausalLM.from_pretrained(path, quantization_config=config_for_4bit, device_map="auto").eval()
     tokenizer = AutoTokenizer.from_pretrained(path)
     tokenizer.pad_token = "[PAD]"
     tokenizer.padding_side = "left"
